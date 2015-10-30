@@ -1,0 +1,208 @@
+#include <Servo.h>
+
+/* Carro evasor de obstaculos controlado por Bluetooth HC05 a traves de App en Android
+
+ARDUINO   L293D(Puente H)        
+ 5          10
+ 6          15
+ 9          7
+ 10         2
+ 5V         1, 9, 16
+ GND        4, 5, 12, 13
+ 
+ El motor 1 se conecta a los pines 3 y 6 del Puente H
+ El motor 2 se conecta a los pines 11 y 14 del Puente H
+ 
+ La fuente de alimentacion de los Motores se conecta a tierra y
+ el positivo al pin 8 del puennte H. 
+ 
+ Conexion del Modulo Bluetooth HC-05 y el Arduino
+ ARDUINO    Bluetooth HC-06 
+ 0 (RX)       TX
+ 1 (TX)       RX
+ 5V           VCC
+ GND          GND
+ 
+ !!Cuidado!! Las conexiones de TX y RX al modulo Bluetooth deben estar desconectadas
+ en el momento que se realiza la carga del codigo (Sketch) al Arduino.
+ 
+ Conexion Sensor Ultrasonido HC-SR04
+ ARDUINO    Ultrasonido HC-SR04 
+ 2            Echo
+ 3            Trig
+ 5V           VCC
+ GND          Gnd
+ */
+
+//----------------------------------------------------------------- SERVOMOTOR
+
+int pServo= 7; // Manejo del Servo
+//----------------------------------------------------------------- PINES DE LOS MOTRES 
+
+int izqA = 5;                // MOTOR 2
+int izqB = 6; 
+
+int derA = 9;                // MOTOR 1
+int derB = 10; 
+
+int vel = 255;               // Velocidad de los motores (0-255)
+int estado = 'g';            // inicia detenido
+
+
+//---------------------------------------------------------------- SENSOR DE PROXIMIDAD
+
+int pEcho = 2;               // define el pin 2 como (pecho) para el Ultrasonido
+int pTrig = 3;               // define el pin 3 como (ptrig) para el Ultrasonido
+int duracion, distancia;     // para Calcular distancia
+
+void setup()  { 
+  
+  Serial.begin(9600);       // inicia el puerto serial para comunicacion con el Bluetooth
+  
+//--------------------------------------------------------------- MOTORES PINES
+  pinMode(derA, OUTPUT);    // MOTOR 2: DEFINE PINES DE SALIDA
+  pinMode(derB, OUTPUT);
+  
+  pinMode(izqA, OUTPUT);    // MOTOR 1: PINES DE SALIDA
+  pinMode(izqB, OUTPUT);
+
+//--------------------------------------------------------------  SENSOR DE ULTRASONIDO
+
+  pinMode(pEcho, INPUT);    // define el pin 2 como entrada (pecho) 
+  pinMode(pTrig,OUTPUT);    // define el pin 3 como salida  (ptrig) 
+  pinMode(13,OUTPUT);
+} 
+
+//-------------------------------------------------------------  MOVIMIENTOS DEL CARRO
+/*
+  Arriba    :  Adelante();
+  Abajo     :  Retroceso();
+  Centro    :  Detenerse();
+  Derecha   :  Derecha();
+  Izquierda :  Izquierda();
+*/
+
+void Adelante()
+{  // Se mueve hacia adelante
+    analogWrite(derB, 0);     
+    analogWrite(izqB, 0); 
+    analogWrite(derA, vel);  
+    analogWrite(izqA, vel);   
+}
+
+void Izquierda()
+{  // Giro hacia la Izquierda
+    analogWrite(derB, 0);     
+    analogWrite(izqB, 0); 
+    analogWrite(derA, 0);  
+    analogWrite(izqA, vel);  
+}
+
+void Detenerse()
+{  // Se detiene
+    analogWrite(derB, 0);     
+    analogWrite(izqB, 0); 
+    analogWrite(derA, 0);    
+    analogWrite(izqA, 0); 
+}
+
+void Derecha()
+{ // Gira hacia la derecha
+    analogWrite(derB, 0);     
+    analogWrite(izqB, 0);
+    analogWrite(izqA, 0);
+    analogWrite(derA, vel);  
+}
+
+
+void Retroceso()
+{  // Retrocede
+    analogWrite(derA, 0);    
+    analogWrite(izqA, 0);
+    analogWrite(derB, vel);  
+    analogWrite(izqB, vel);  
+}
+
+void Griro()
+{
+        analogWrite(derB, 0);                // Girar durante 1100 milisegundos   
+        analogWrite(izqB, 0); 
+        analogWrite(derA, 0);  
+        analogWrite(izqA, vel);
+}
+
+void loop()  { 
+
+  if(Serial.available()>0){        // lee el bluetooth y almacena en estado
+    estado = Serial.read();
+  }
+  if(estado=='a'){           // Boton desplazar al Frente
+       Adelante();
+  }
+  if(estado=='i'){          // Boton IZQ 
+    Izquierda();      
+  }
+  if(estado=='p'){          // Boton Parar
+    Detenerse();
+  }
+  if(estado=='d'){          // Boton DER
+    Derecha();
+  } 
+
+  if(estado=='r'){          // Boton Reversa
+     Retroceso();
+  }
+  
+  if (estado =='f'){          // Boton ON,  se mueve sensando distancia 
+  
+     digitalWrite(pTrig, HIGH);   // genera el pulso de trigger por 10us
+     delay(0.01);
+     digitalWrite(pTrig, LOW);
+     
+     duracion = pulseIn(pEcho, HIGH);              // Lee el tiempo del Echo
+     distancia = (duracion/2) / 29;            // calcula la distancia en centimetros
+     delay(10); 
+     
+     if (distancia <= 15 && distancia >=2){    // si la distancia es menor de 15cm
+        digitalWrite(13,HIGH);                 // Enciende LED
+
+        Detenerse();
+      /*  analogWrite(derB, 0);                // Parar los motores por 200 mili segundos
+        analogWrite(izqB, 0); 
+        analogWrite(derA, 0);    
+        analogWrite(izqA, 0); */
+        delay (200);
+
+        Retroceso();
+       /* analogWrite(derB, vel);               // Reversa durante 500 mili segundos
+        analogWrite(izqB, vel); */ 
+        delay(500);           
+
+        Griro();
+       /* analogWrite(derB, 0);                // Girar durante 1100 milisegundos   
+        analogWrite(izqB, 0); 
+        analogWrite(derA, 0);  
+        analogWrite(izqA, vel); */  
+        delay(1100);
+        
+        digitalWrite(13,LOW);
+     }
+     else{                   // Si no hay obstaculos se desplaza al frente  
+          Adelante();
+        /* analogWrite(derB, 0);     
+         analogWrite(izqB, 0); 
+         analogWrite(derA, vel);  
+         analogWrite(izqA, vel); */
+     }
+  }
+  
+  if(estado=='g'){          // Boton OFF, detiene los motores no hace nada 
+     Deternese();
+   /*  
+     analogWrite(derB, 0);     
+     analogWrite(izqB, 0); 
+     analogWrite(derA, 0);    
+     analogWrite(izqA, 0);
+     */
+  }
+}

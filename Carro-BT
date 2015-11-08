@@ -1,0 +1,148 @@
+
+//----------------------------------------------------------------- BLUETOOTH :: LIBRERIA PARA PUERTO SERIAL VIRTUAL BLUETOOTH
+#include <SoftwareSerial.h>//Se puede emular mas de un puerto serial
+//----------------------------------------------------------------- SERVOMOTOR
+
+int pServo= 7; // Manejo del Servo
+
+//----------------------------------------------------------------- PINES DE LOS MOTRES 
+
+int izqA = 5;                // MOTOR 2
+int izqB = 6; 
+
+int derA = 9;                // MOTOR 1
+int derB = 10; 
+
+int vel = 255;               // Velocidad de los motores (0-255)
+char data = 'f';            // inicia detenido
+
+//---------------------------------------------------------------- SENSOR DE ULTRASONIDO
+
+int pecho = 2;               // define el pin 2 como (pecho) para el Ultrasonido
+int ptrig = 3;               // define el pin 3 como (ptrig) para el Ultrasonido
+int duracion, distancia;     // para Calcular distancia
+
+// ---------------------------------------------------------------- BLUETOOTH :: USO PUERTO VIRTUAL PARA BLUETOOTH
+
+SoftwareSerial BTSerial(0, 1); // RX | TX Poner los pines que usas 
+
+void setup() {
+
+// ----------------------------------------------------------------- BLUETOOTH :: INICIALIZACIÓN
+
+BTSerial.begin(9600);       // inicia el puerto serial para comunicacion con el Bluetooth
+  
+//--------------------------------------------------------------- MOTORES PINES
+  pinMode(derA, OUTPUT);    // MOTOR 2: DEFINE PINES DE SALIDA
+  pinMode(derB, OUTPUT);
+  
+  pinMode(izqA, OUTPUT);    // MOTOR 1: PINES DE SALIDA
+  pinMode(izqB, OUTPUT);
+
+
+//------------------------------------------------------------------ SENSOR DE ULTRASONIDO
+
+  pinMode(pecho, INPUT);    // define el pin 2 como entrada (pecho) 
+  pinMode(ptrig,OUTPUT);    // define el pin 3 como salida  (ptrig) 
+  
+
+
+} // Cierre Setup
+
+
+void loop() {
+  
+ while (BTSerial.available()) 
+  {
+    char data = (char)BTSerial.read();
+         
+         if(data =='a'){ // --------------------------- // btnArriba  cvoz: Avanzar 
+         
+          BTSerial.print("Avanzar");
+          analogWrite(derB, 0);     
+          analogWrite(izqB, 0); 
+          analogWrite(derA, vel);  
+          analogWrite(izqA, vel);
+                  }
+        if(data=='r'){ // --------------------------- btnAbajo cvoz: Retroceder
+          //Retroceso();
+          BTSerial.print("Retroceso");
+          analogWrite(derA, 0);    
+          analogWrite(izqA, 0);
+          analogWrite(derB, vel);  
+          analogWrite(izqB, vel);
+                  }
+                  
+        if(data=='f'){ // --------------------------- // btnCentro  cvoz: Frenar
+          //Detenerse();
+          BTSerial.print("Frenar");
+          analogWrite(derB, 0);     
+          analogWrite(izqB, 0); 
+          analogWrite(derA, 0);    
+          analogWrite(izqA, 0);
+                  }
+                  
+        if(data =='i'){ // --------------------------- // btnIzquierda  cvoz: Izquierda 
+          //Izquierda();      
+          BTSerial.print("Izquierda");
+          analogWrite(derB, 0);     
+          analogWrite(izqB, 0); 
+          analogWrite(derA, 0);  
+          analogWrite(izqA, vel);
+                  }
+                  
+        if(data=='d'){  // --------------------------- // btnDerecha cvoz: Derecha
+          //Derecha();
+          BTSerial.print("Derecha");
+          analogWrite(derB, 0);     
+          analogWrite(izqB, 0);
+          analogWrite(izqA, 0);
+          analogWrite(derA, vel);  
+                  } 
+                  
+        if(data=='s'){  // --------------------------- // btnDerecha cvoz: Derecha
+         
+          BTSerial.print("Sensando");
+           // Boton ON,  se mueve sensando distancia 
+  
+           digitalWrite(ptrig, HIGH);   // genera el pulso de trigger por 10us
+           delay(0.01);
+           digitalWrite(ptrig, LOW);
+           
+           duracion = pulseIn(pecho, HIGH);              // Lee el tiempo del Echo
+           distancia = (duracion/2) / 29;            // calcula la distancia en centimetros
+           delay(10); 
+           
+           if (distancia <= 15 && distancia >=2){    // si la distancia es menor de 15cm
+              digitalWrite(13,HIGH);                 // Enciende LED
+              
+              analogWrite(derB, 0);                  // Parar los motores por 200 mili segundos
+              analogWrite(izqB, 0); 
+              analogWrite(derA, 0);    
+              analogWrite(izqA, 0); 
+              delay (200);
+        
+              analogWrite(derB, vel);               // Reversa durante 500 mili segundos
+              analogWrite(izqB, vel); 
+              delay(500);           
+              
+              analogWrite(derB, 0);                // Girar durante 1100 milisegundos   
+              analogWrite(izqB, 0); 
+              analogWrite(derA, 0);  
+              analogWrite(izqA, vel);  
+              delay(1100);
+              
+              digitalWrite(13,LOW);
+           }
+           else{                   // Si no hay obstaculos se desplaza al frente  
+               analogWrite(derB, 0);     
+               analogWrite(izqB, 0); 
+               analogWrite(derA, vel);  
+               analogWrite(izqA, vel); 
+               }
+                  } 
+                  
+   } // Cierre While
+  
+ } // Cierre Loop
+                        
